@@ -1,0 +1,100 @@
+#!/bin/bash
+
+set -e
+
+usage() {
+	echo "Usage: [ANDROID_HOME=path-to-sdk-bin] compile SOURCE_FOLDER [PACKAGE_NAME]"
+	echo "Compiles and signs the apk from the source folder with the optional package name. ANDROID_HOME environment should be set to the android sdk."
+	echo "Package name should be set for non-standard target in the form of com/example/package (default moe/enx/loader)"
+	exit 1
+}
+
+
+if [[ -z $ANDROID_HOME ]]; then
+	usage
+fi
+
+if [[ $# -lt 1 ]]; then
+	usage
+fi
+
+if [[ ! "$1" =~ ^([a-zA-Z0-9"_""-"])*(["\\""/"])?$ ]]; then
+	echo "Potentially bad source folder name \"$1\", bailing out. Source folder should be relative to the current dir and have no spaces."
+	usage
+fi
+
+if [[ $# -eq 2 ]]; then
+	PKG_NAME=$2
+else
+	PKG_NAME="moe/enx/loader"
+fi
+
+SOURCE_FOLDER=$1
+BUILD_DIR="build-$SOURCE_FOLDER"
+
+
+# find sdk version
+BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls -1 $ANDROID_HOME/build-tools/ | sort -V | tail -n 1)"
+APKSIGNER="$BUILD_TOOLS/apksigner"
+ZIPALIGN="$BUILD_TOOLS/zipalign"
+
+# should theoretically match the BUILD_TOOLS
+PLATFORM="$ANDROID_HOME/platforms/$(ls -1 $ANDROID_HOME/platforms/ | sort -V | tail -n 1)"
+
+
+# check if the keystore is present
+if [[ ! -f "./.payload_keystore" ]]; then
+	echo $'payload\npayload\n\n\n\n\n\n\nyes\n' | keytool -genkey -keystore ./.payload_keystore -keyalg RSA -alias DO_NOT_USE_payload
+fi
+
+
+if [[ -d "$BUILD_DIR" ]]; then
+	rm -r "$BUILD_DIR"
+fi
+
+mkdir $BUILD_DIR
+mkdir -p $BUILD_DIR/gen $BUILD_DIR/obj $BUILD_DIR/apk
+
+echo "==== generating R.java..."
+
+$BUILD_TOOLS/aapt2 link -v \
+    --java $BUILD_DIR/gen \
+    --manifest $SOURCE_FOLDER/AndroidManifest.xml \
+    -I $PLATFORM/android.jar \
+    -o $BUILD_DIR/intermediate.apk
+
+if [[ -f "$BUILD_DIR/intermediate.apk" ]]; then
+	rm $BUILD_DIR/intermediate.apk
+fi
+
+echo "==== compiling java res..."
+
+javac -d $BUILD_DIR/obj \
+    -classpath $PLATFORM/android.jar \
+    -sourcepath $SOURCE_FOLDER:$BUILD_DIR/gen \
+    $SOURCE_FOLDER/$PKG_NAME/*.java \
+    $BUILD_DIR/gen/$PKG_NAME/R.java
+
+echo "==== building .dex..."
+
+$BUILD_TOOLS/d8 \
+    --lib $PLATFORM/android.jar \
+    --output $BUILD_DIR/ \
+    $BUILD_DIR/obj/$PKG_NAME/*.class
+
+echo "==== building apk..."
+
+$BUILD_TOOLS/aapt package -f \
+    -M $SOURCE_FOLDER/AndroidManifest.xml \
+    -I $PLATFORM/android.jar \
+    -F $BUILD_DIR/target.apk \
+    $BUILD_DIR/
+
+
+echo "==== debug sign..."
+
+# No zipalign is needed
+
+$APKSIGNER sign --v2-signing-enabled --ks ./.payload_keystore --ks-pass pass:payload $BUILD_DIR/target.apk 
+
+echo "[SUCCESS] apk is located in $BUILD_DIR/target.apk"
