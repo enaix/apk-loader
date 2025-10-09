@@ -47,7 +47,7 @@ public class LoaderActivity extends Activity {
         base_lyt.setOrientation(LinearLayout.VERTICAL);
         // Spacer
         Space space = new Space(this);
-        ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(1, 320);
+        ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(1, 240);
         space.setLayoutParams(params);
         base_lyt.addView(space);
 
@@ -165,7 +165,7 @@ public class LoaderActivity extends Activity {
             // Find and invoke onCreate method
             output.append("\nInvoking main activity lifecycle...\n\n");
             init.callLifecycleMethods(activity, output);
-            output.append("\nActivity lifecycle init successful!\n\n");
+            output.append("Activity lifecycle init successful!\n\n");
 
             // Print local directory contents for debug
             output.append("=== Local Directory Contents ===\n");
