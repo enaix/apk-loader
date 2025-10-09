@@ -17,11 +17,14 @@ import dalvik.system.PathClassLoader;
 import java.io.File;
 import java.lang.reflect.Method;
 
+import moe.enx.loader.ActivityInit;
+
 public class LoaderActivity extends Activity {
     private static final int PICK_FILE_REQUEST = 1;
     private static final String TAG = "DynamicLoader";
-    
+
     private TextView statusText;
+    private TextView outputText;
     private EditText activityNameInput;
     private Button pickButton;
     private Button executeButton;
@@ -55,7 +58,7 @@ public class LoaderActivity extends Activity {
         statusText = new TextView(this);
         statusText.setText("Select an APK file to load");
         statusText.setPadding(0, 0, 0, 20);
-        statusText.setTextSize(12);
+        //statusText.setTextSize(12);
         
         pickButton = new Button(this);
         pickButton.setText("Pick APK File");
@@ -72,12 +75,19 @@ public class LoaderActivity extends Activity {
         executeButton = new Button(this);
         executeButton.setText("Load & Execute");
         executeButton.setEnabled(false);
+
+        outputText = new TextView(this);
+        outputText.setText("");
+        outputText.setPadding(0, 0, 0, 20);
+        outputText.setTextSize(12);
+        outputText.setTextIsSelectable(true);
         
         layout.addView(statusText);
         layout.addView(pickButton);
         layout.addView(activityLabel);
         layout.addView(activityNameInput);
         layout.addView(executeButton);
+        layout.addView(outputText);
         
         scrollView.addView(layout);
         base_lyt.addView(scrollView);
@@ -112,9 +122,11 @@ public class LoaderActivity extends Activity {
         output.append("File: ").append(selectedFilePath).append("\n");
         output.append("Activity: ").append(activityNameInput.getText()).append("\n\n");
        
-	String activityName = activityNameInput.getText().toString();
+        String activityName = activityNameInput.getText().toString();
 
         try {
+            ActivityInitializer init = new ActivityInitializer();
+
             // Create PathClassLoader
             output.append("Creating PathClassLoader...\n");
             PathClassLoader classLoader = new PathClassLoader(
@@ -127,24 +139,28 @@ public class LoaderActivity extends Activity {
             
             Class<?> activityClass = classLoader.loadClass(activityName);
             output.append("[OK] Class loaded: ").append(activityClass.getName()).append("\n\n");
-            
+
+
             // Create instance
             output.append("Creating instance...\n");
             Object activityInstance = activityClass
                 .getDeclaredConstructor()
                 .newInstance();
             output.append("[OK] Instance created\n\n");
-            
+
+
+            boolean ok = init.initializeActivity(activityInstance, getApplicationContext(), activityName, output);
+            if (!ok) {
+                output.append("Activity initialization failed\n");
+                outputText.setText(output.toString());
+                return;
+            }
+
             // Find and invoke onCreate method
-            output.append("Invoking onCreate()...\n");
-            Method onCreateMethod = activityClass.getMethod(
-                "onCreate",
-                Bundle.class
-            );
-            
-            onCreateMethod.invoke(activityInstance, new Bundle());
-            output.append("[OK] onCreate() executed successfully!\n\n");
-            
+            output.append("\nInvoking main activity lifecycle...\n\n");
+            init.callLifecycleMethods(activityInstance, output);
+            output.append("\nActivity lifecycle init successful!\n\n");
+
             // Print local directory contents for debug
             output.append("=== Local Directory Contents ===\n");
             File filesDir = getFilesDir();
@@ -158,7 +174,7 @@ public class LoaderActivity extends Activity {
             output.append("Path: ").append(cacheDir.getAbsolutePath()).append("\n\n");
             printDirectoryContents(cacheDir, output, 0);
             
-            statusText.setText(output.toString());
+            outputText.setText(output.toString());
             Log.d(TAG, output.toString());
             
             Toast.makeText(this, "Success!", Toast.LENGTH_LONG).show();
@@ -169,7 +185,7 @@ public class LoaderActivity extends Activity {
             output.append("Message: ").append(e.getMessage()).append("\n");
             output.append("Cause: ").append(e.getCause()).append("\n");
             
-            statusText.setText(output.toString());
+            outputText.setText(output.toString());
             Log.e(TAG, "Error loading APK", e);
             e.printStackTrace();
         }
