@@ -40,7 +40,7 @@ public class ActivityInitializer {
             output.append("[OK] Base context attached!\n\n");
 
             // Step 2: Try to attach using Activity.attach() for full initialization
-            /*try {
+            try {
                 // Get the attach method - note: signature varies by Android version
                 // This is the Android 15+ signature (may need adjustment for other versions)
                 Method attach = findAttachMethod();
@@ -64,16 +64,17 @@ public class ActivityInitializer {
                         intent
                     );
 
+                    output.append("Invoking Activity.attach()...\n");
                     attach.invoke(targetActivity, params);
-                    output.append("[OK] Activity.attach() called");
+                    output.append("[OK] Activity.attach() called\n");
                     return true;
                 }
             } catch (Exception e) {
-                Log.w(TAG, "attach() failed, using simplified initialization: " + e.getMessage());
-                // Continue with just base context - might work for simple activities
-            }*/
+                output.append("attach() failed, using simplified initialization: " + e.getMessage() + "\n");
+                output.append("Continuing initialization...\n");
+                return true; // Partial init
+            }
 
-            // Step 3: If attach() didn't work, at least we have base context
             output.append("[OK] Basic initialization complete\n");
             return true;
 
@@ -100,7 +101,7 @@ public class ActivityInitializer {
     /**
      * Build parameters for attach() method call
      */
-    /*private static Object[] buildAttachParams(
+    private static Object[] buildAttachParams(
             Method attachMethod,
             Activity targetActivity,
             Context hostContext,
@@ -148,14 +149,14 @@ public class ActivityInitializer {
         }
 
         return params;
-    }*/
+    }
 
     /**
      * Create a minimal ActivityInfo for the dynamic activity
      */
     private static ActivityInfo createActivityInfo(Context context, String className) {
         ActivityInfo info = new ActivityInfo();
-        info.packageName = context.getPackageName();
+        info.packageName = context.getPackageName(); // Do we need to set the packageName to the proper one?
         info.name = className;
         info.applicationInfo = context.getApplicationInfo();
         info.taskAffinity = info.packageName;
@@ -175,7 +176,6 @@ public class ActivityInitializer {
         Method onCreate = Activity.class.getDeclaredMethod("onCreate", Bundle.class);
         onCreate.setAccessible(true);
         onCreate.invoke(activity, savedInstanceState);
-        //Log.d(TAG, "✓ onCreate() called successfully");
     }
 
     /**
@@ -191,7 +191,7 @@ public class ActivityInitializer {
             Method onStart = Activity.class.getDeclaredMethod("onStart");
             onStart.setAccessible(true);
             onStart.invoke(activity);
-            Log.d(TAG, "✓ onStart() called");
+            Log.d(TAG, "onStart() called");
         } catch (Exception e) {
             Log.w(TAG, "onStart() failed: " + e.getMessage());
         }
@@ -200,7 +200,7 @@ public class ActivityInitializer {
             Method onResume = Activity.class.getDeclaredMethod("onResume");
             onResume.setAccessible(true);
             onResume.invoke(activity);
-            Log.d(TAG, "✓ onResume() called");
+            Log.d(TAG, "onResume() called");
         } catch (Exception e) {
             Log.w(TAG, "onResume() failed: " + e.getMessage());
         }*/
