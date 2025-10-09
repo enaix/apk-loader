@@ -17,7 +17,7 @@ import dalvik.system.PathClassLoader;
 import java.io.File;
 import java.lang.reflect.Method;
 
-import moe.enx.loader.ActivityInit;
+import moe.enx.loader.ActivityInitializer;
 
 public class LoaderActivity extends Activity {
     private static final int PICK_FILE_REQUEST = 1;
@@ -26,6 +26,7 @@ public class LoaderActivity extends Activity {
     private TextView statusText;
     private TextView outputText;
     private EditText activityNameInput;
+    private EditText apkPath;
     private Button pickButton;
     private Button executeButton;
     private String selectedFilePath;
@@ -62,6 +63,10 @@ public class LoaderActivity extends Activity {
         
         pickButton = new Button(this);
         pickButton.setText("Pick APK File");
+
+        apkPath = new EditText(this);
+        apkPath.setHint("Pick the APK or type in the absolute path");
+        apkPath.setPadding(20, 20, 20, 20);
         
         TextView activityLabel = new TextView(this);
         activityLabel.setText("Activity Class Name:");
@@ -74,7 +79,6 @@ public class LoaderActivity extends Activity {
         
         executeButton = new Button(this);
         executeButton.setText("Load & Execute");
-        executeButton.setEnabled(false);
 
         outputText = new TextView(this);
         outputText.setText("");
@@ -84,6 +88,7 @@ public class LoaderActivity extends Activity {
         
         layout.addView(statusText);
         layout.addView(pickButton);
+        layout.addView(apkPath);
         layout.addView(activityLabel);
         layout.addView(activityNameInput);
         layout.addView(executeButton);
@@ -109,8 +114,8 @@ public class LoaderActivity extends Activity {
             if (data != null && data.getData() != null) {
                 Uri uri = data.getData();
                 selectedFilePath = uri.getPath();
+		apkPath.setText(selectedFilePath);
                 statusText.setText("Selected: " + selectedFilePath + "\n");
-                executeButton.setEnabled(true);
                 Log.d(TAG, "Selected file: " + selectedFilePath);
             }
         }
@@ -123,6 +128,7 @@ public class LoaderActivity extends Activity {
         output.append("Activity: ").append(activityNameInput.getText()).append("\n\n");
        
         String activityName = activityNameInput.getText().toString();
+        selectedFilePath = apkPath.getText().toString();
 
         try {
             ActivityInitializer init = new ActivityInitializer();
@@ -148,8 +154,8 @@ public class LoaderActivity extends Activity {
                 .newInstance();
             output.append("[OK] Instance created\n\n");
 
-
-            boolean ok = init.initializeActivity(activityInstance, getApplicationContext(), activityName, output);
+            Activity activity = (Activity)activityInstance;
+            boolean ok = init.initializeActivity(activity, getApplicationContext(), activityName, output);
             if (!ok) {
                 output.append("Activity initialization failed\n");
                 outputText.setText(output.toString());
@@ -158,7 +164,7 @@ public class LoaderActivity extends Activity {
 
             // Find and invoke onCreate method
             output.append("\nInvoking main activity lifecycle...\n\n");
-            init.callLifecycleMethods(activityInstance, output);
+            init.callLifecycleMethods(activity, output);
             output.append("\nActivity lifecycle init successful!\n\n");
 
             // Print local directory contents for debug
