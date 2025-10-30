@@ -18,7 +18,7 @@ if [[ $# -lt 1 ]]; then
 	usage
 fi
 
-if [[ ! "$1" =~ ^([a-zA-Z0-9"_""-"])*(["\\""/"])?$ ]]; then
+if [[ ! "$1" =~ ^([a-zA-Z0-9"_""-"])*(["\\""/"])?$ || "$1" == \-* ]]; then
 	echo "Potentially bad source folder name \"$1\", bailing out. Source folder should be relative to the current dir and have no spaces."
 	usage
 fi

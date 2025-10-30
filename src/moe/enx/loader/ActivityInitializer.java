@@ -106,7 +106,7 @@ public class ActivityInitializer {
             Activity targetActivity,
             Context hostContext,
             ActivityInfo info,
-            Intent intent) {
+            Intent intent) throws Exception {
 
         Class<?>[] paramTypes = attachMethod.getParameterTypes();
         Object[] params = new Object[paramTypes.length];
@@ -117,14 +117,15 @@ public class ActivityInitializer {
 
             if (type == Context.class) {
                 params[i] = hostContext;
-            } else if (type == android.app.ActivityThread.class) {
+            } else if (type == Class.forName("android.app.ActivityThread")) {
                 params[i] = null; // Can be null for testing
             } else if (type == android.app.Instrumentation.class) {
-                try {
+                params[i] = null; // testing
+                /*try {
                     params[i] = ((Activity) hostContext).getInstrumentation();
                 } catch (Exception e) {
                     params[i] = null;
-                }
+                }*/
             } else if (type == android.os.IBinder.class) {
                 params[i] = null;
             } else if (type == int.class || type == Integer.class) {
